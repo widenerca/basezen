@@ -1,12 +1,28 @@
 import { useState, useCallback } from 'react';
 import { useAccount, useSendTransaction, useConnect, useDisconnect } from 'wagmi';
-import { parseEther } from 'viem';
+import { parseEther, encodeFunctionData } from 'viem';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, CheckCircle2, Loader2, Wallet as WalletIcon, LogOut } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
-// Example Builder Code (8 bytes / 16 hex chars)
-const BUILDER_CODE = '0x426173655a656e30'; 
+// --- CONTRACT SETTINGS ---
+// After deploying in Remix, paste the contract address here:
+const CONTRACT_ADDRESS = '0xC2A7A2074a3296E031a2ED3Ea8e580eA233a460b'; 
+
+// ABI for the checkIn() function
+const ABI = [
+  {
+    "inputs": [],
+    "name": "checkIn",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+] as const;
+
+// Your Builder Code for attribution
+// bc_0szxaw42 -> 0x62635f30737a7861773432
+const BUILDER_CODE = '0x62635f30737a7861773432'; 
 
 export function CheckInButton() {
   const { address, isConnected } = useAccount();
@@ -17,11 +33,29 @@ export function CheckInButton() {
 
   const handleCheckIn = useCallback(() => {
     if (!address) return;
-    sendTransaction({
-      to: address,
-      value: parseEther('0'),
-      data: BUILDER_CODE as `0x${string}`,
-    });
+
+    if (CONTRACT_ADDRESS) {
+      // If contract is set, call the contract function
+      const data = encodeFunctionData({
+        abi: ABI,
+        functionName: 'checkIn',
+      });
+      
+      // Append Builder Code to calldata (Base standard)
+      const finalData = (data + BUILDER_CODE.slice(2)) as `0x${string}`;
+
+      sendTransaction({
+        to: CONTRACT_ADDRESS as `0x${string}`,
+        data: finalData,
+      });
+    } else {
+      // If no contract, just send 0 ETH to self (legacy mode)
+      sendTransaction({
+        to: address,
+        value: parseEther('0'),
+        data: BUILDER_CODE as `0x${string}`,
+      });
+    }
   }, [address, sendTransaction]);
 
   return (
